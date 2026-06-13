@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Navet Smart Home Dashboard</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+      <aside class="sidenav" id="sidenav">
+        <div class="sidenav-brand">
+          <div class="brand-icon">N</div>
+          <div class="brand-label">Navet</div>
+        </div>
+        <nav class="nav-list">
+          <button class="nav-item active">Home</button>
+          <button class="nav-item">Activity</button>
+          <button class="nav-item">Rooms</button>
+          <button class="nav-item">Media</button>
+          <button class="nav-item">Settings</button>
+        </nav>
+        <div class="sidenav-footer">
+          <button id="menuToggle" class="btn tiny" type="button" @click="toggleSidenav">☰</button>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="topbar-info">
+            <div>
+              <p class="eyebrow">Live dashboard</p>
+              <h1>{{ title }}</h1>
+              <p class="subtitle">{{ subtitle }}</p>
+            </div>
+          </div>
+
+          <div class="topbar-actions">
+            <div class="search-wrapper">
+              <input id="searchInput" class="search" v-model="searchQuery" :placeholder="searchPlaceholder" />
+            </div>
+            <select id="langSelect" class="lang-select" aria-label="Language" v-model="activeLang" @change="setLanguage(activeLang)">
+              <option value="en">EN</option>
+              <option value="fa">فارسی</option>
+            </select>
+            <button id="refreshBtn" class="btn small" @click="fetchDashboard">{{ refreshLabel }}</button>
+            <span id="statusTag" class="status-tag" :style="statusStyle">{{ statusText }}</span>
+          </div>
+        </header>
+
+        <section class="status-strip">
+          <div v-for="pill in statusPills" :key="pill.label" class="status-pill" :class="pill.color">
+            <span>{{ pill.label }}</span>
+            <strong>{{ pill.value }}</strong>
+          </div>
+        </section>
+
+        <section class="dashboard-grid top-grid">
+          <article class="card clock-card glass-card">
+            <div class="panel-title">Today</div>
+            <div class="clock-panel">
+              <div class="hero-time">{{ time }} <span class="clock-meridian">{{ meridian }}</span></div>
+              <p class="hero-date">{{ date }}</p>
+              <p class="subtitle">Smooth control, live status, and ambient insights for the smart home.</p>
+            </div>
+          </article>
+
+          <article class="card light-card glass-card">
+            <div class="panel-title">Light</div>
+            <strong class="card-title">Kitchen island</strong>
+            <div class="meter-row">
+              <span>Brightness</span>
+              <strong>{{ lightBrightness }}%</strong>
+            </div>
+            <div class="slider-track">
+              <div class="slider-fill" :style="{ width: lightBrightness + '%' }"></div>
+            </div>
+            <div class="card-actions small">
+              <button class="icon-btn">☀</button>
+              <button class="icon-btn">🌙</button>
+              <button class="icon-btn">…</button>
+              <button class="icon-btn">⚙</button>
+            </div>
+          </article>
+
+          <article class="card fan-card glass-card">
+            <div class="panel-title">Fan</div>
+            <strong class="card-title">Bedroom fan</strong>
+            <div class="card-empty"></div>
+          </article>
+
+          <article class="card hvac-card glass-card">
+            <div class="panel-title">HVAC</div>
+            <strong class="card-title">Main floor</strong>
+            <div class="energy-value blue">
+              <strong>{{ heating.temperature }}</strong>
+              <span>{{ heating.mode }}</span>
+            </div>
+            <div class="pill-row">
+              <button class="pill-btn" @click="adjustHeating(-1)">-</button>
+              <button class="pill-btn" @click="adjustHeating(1)">+</button>
+              <button class="pill-btn">🔥</button>
+              <button class="pill-btn">↻</button>
+            </div>
+            <div class="weather-row">
+              <span>Target <strong>{{ heating.target }}</strong></span>
+            </div>
+          </article>
+
+          <article class="card humidifier-card glass-card">
+            <div class="panel-title">Humidifier</div>
+            <strong class="card-title">Bedroom Humidifier</strong>
+            <div class="energy-value blue">
+              <strong>46%</strong>
+              <span>Humidifying to 46%</span>
+            </div>
+            <div class="pill-row">
+              <button class="pill-btn">-</button>
+              <button class="pill-btn">+</button>
+              <button class="pill-btn active">💧</button>
+              <button class="pill-btn">🌙</button>
+            </div>
+          </article>
+
+          <article class="card media-card glass-card">
+            <div class="panel-title">Now Playing</div>
+            <strong class="card-title">{{ media.title }}</strong>
+            <span class="media-label">{{ media.artist }}</span>
+            <div class="media-cover"></div>
+            <div class="media-track">
+              <span>{{ media.state }}</span>
+              <span>{{ media.volume }}</span>
+            </div>
+            <div class="card-actions small media-actions">
+              <button class="icon-btn" @click="mediaAction('pause')" type="button">⏸</button>
+              <button class="icon-btn" @click="mediaAction('play')" type="button">▶</button>
+              <button class="icon-btn" @click="mediaAction('stop')" type="button">■</button>
+            </div>
+          </article>
+        </section>
+
+        <section class="dashboard-grid middle-grid">
+          <article class="card tv-card glass-card">
+            <div class="panel-title">TV</div>
+            <strong class="card-title">Living Room TV</strong>
+            <div class="remote-grid">
+              <button class="remote-btn">◀</button>
+              <button class="remote-btn">OK</button>
+              <button class="remote-btn">▶</button>
+            </div>
+            <div class="remote-row">
+              <button class="icon-btn">-</button>
+              <button class="icon-btn">🔊</button>
+              <button class="icon-btn">+</button>
+              <button class="icon-btn">⏯</button>
+            </div>
+            <div class="tv-footer">
+              <span>Samsung TV</span>
+              <button class="icon-btn">⚙</button>
+            </div>
+          </article>
+
+          <article class="card blinds-card glass-card">
+            <div class="panel-title">Window Blinds</div>
+            <strong class="card-title">Living Room Blinds</strong>
+            <div class="energy-value orange">
+              <strong>48%</strong>
+              <span>Open</span>
+            </div>
+            <div class="pill-row">
+              <button class="pill-btn">▲</button>
+              <button class="pill-btn">‖</button>
+              <button class="pill-btn">▼</button>
+            </div>
+          </article>
+
+          <article class="card door-card glass-card">
+            <div class="panel-title">Locked</div>
+            <strong class="card-title">Front Door</strong>
+            <div class="door-icon">🔒</div>
+            <button class="btn full">Slide to unlock</button>
+          </article>
+
+          <article class="card alarm-card glass-card">
+            <div class="panel-title">Armed Home</div>
+            <strong class="card-title">Home Alarm</strong>
+            <div class="pill-row">
+              <button class="pill-btn">Arm Home</button>
+              <button class="pill-btn">Arm Away</button>
+              <button class="pill-btn">Arm Night</button>
+            </div>
+            <button class="btn alt">Disarm</button>
+          </article>
+        </section>
+
+        <section class="dashboard-grid bottom-grid">
+          <article class="card weather-card glass-card">
+            <div class="panel-title">Stockholm</div>
+            <span class="media-label">{{ weatherSummary }}</span>
+            <div class="weather-main">
+              <strong>{{ weatherTemp }}</strong>
+              <span>{{ weatherExtra }}</span>
+            </div>
+            <div class="weather-row">
+              <span>Sunrise <strong>{{ sunrise }}</strong></span>
+              <span>Sunset <strong>{{ sunset }}</strong></span>
+            </div>
+            <div class="weather-details-grid">
+              <span>Precipitation 0.4 mm</span>
+              <span>Humidity 58%</span>
+              <span>Wind 12 km/h</span>
+            </div>
+            <div class="forecast-row">
+              <span>Mon 22° 13°</span>
+              <span>Tue 19° 12°</span>
+              <span>Wed 16° 12°</span>
+              <span>Thu 21° 11°</span>
+              <span>Fri 18° 12°</span>
+            </div>
+          </article>
+
+          <article class="card events-card glass-card">
+            <div class="panel-title">Events</div>
+            <div class="event-list">
+              <div v-for="event in events" :key="event.title" class="event-item">
+                <strong>{{ event.title }}</strong>
+                <span>{{ event.time }}</span>
+              </div>
+            </div>
+          </article>
+
+          <article class="card energy-card glass-card">
+            <div class="panel-title">Energy</div>
+            <div class="energy-chart">
+              <strong class="energy-big">{{ energyUsage }}</strong>
+              <span class="energy-small">Air Quality <strong>{{ airQuality }}</strong></span>
+            </div>
+          </article>
+
+          <article class="card quick-controls-card glass-card">
+            <div class="panel-title">Quick Controls</div>
+            <div id="controlsGrid" class="control-grid">
+              <div v-if="!filteredControls.length" class="control-card">No controllable devices found. Connect Home Assistant or edit entity configuration.</div>
+              <div v-for="device in filteredControls" :key="device.id" class="control-card">
+                <div>
+                  <strong>{{ device.name }}</strong>
+                  <span class="small-text">{{ device.state }}</span>
+                </div>
+                <button class="btn tiny" type="button" @click="callService(device.id, device.state === 'on' ? 'turn_off' : 'turn_on')">
+                  {{ device.state === 'on' ? 'Off' : 'On' }}
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <article class="card sensor-card glass-card">
+            <div class="panel-title">Sensors</div>
+            <div id="observabilityGrid" class="status-grid">
+              <div v-if="!observability.length" class="status-card">No sensors available yet.</div>
+              <div v-for="item in observability" :key="item.id" class="status-card">
+                <div><strong>{{ item.name }}</strong></div>
+                <div>{{ item.state }} {{ item.unit }}</div>
+              </div>
+            </div>
+          </article>
+
+          <article class="card script-card glass-card">
+            <div class="panel-title">Script</div>
+            <strong class="card-title">Goodnight</strong>
+          </article>
+
+          <article class="card scene-card glass-card">
+            <div class="panel-title">Scene</div>
+            <strong class="card-title">Movie Mode</strong>
+            <span>Living Room</span>
+            <button class="btn small">▶</button>
+          </article>
+        </section>
+
+        <article class="card specs-card glass-card">
+          <div class="panel-title">Home Overview</div>
+          <div class="home-overview-grid">
+            <div>
+              <span>Lights</span>
+              <strong>{{ lightsCount }}</strong>
+            </div>
+            <div>
+              <span>Switches</span>
+              <strong>{{ switchesCount }}</strong>
+            </div>
+            <div>
+              <span>Energy use</span>
+              <strong>{{ energyUsage }}</strong>
+            </div>
+            <div>
+              <span>Air quality</span>
+              <strong>{{ airQuality }}</strong>
+            </div>
+          </div>
+          <div class="panel-row">
+            <div class="panel-block">
+              <div class="panel-title small">Today</div>
+              <ul id="calendarList" class="event-list">
+                <li v-for="item in calendar" :key="item.title" class="event-item">
+                  <strong>{{ item.title }}</strong>
+                  <span class="small-text">{{ item.time }}</span>
+                </li>
+              </ul>
+            </div>
+            <div class="panel-block">
+              <div class="panel-title small">Notifications</div>
+              <ul id="notificationsList" class="notification-list">
+                <li v-for="note in notifications" :key="note">{{ note }}</li>
+              </ul>
+            </div>
+          </div>
+        </article>
+      </main>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
